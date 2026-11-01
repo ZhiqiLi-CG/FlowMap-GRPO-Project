@@ -1,31 +1,210 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Flow-Map GRPO: online reinforcement learning for deterministic few-step flow-map generators (MeanFlow, sCM) via Anchored Stochastic Flow Map Composition."><title>Flow-Map GRPO | RL for Few-Step Flow-Map Generators</title><link rel="stylesheet" href="styles.css?v=1"><script defer src="samples.js?v=1"></script><script defer src="app.js?v=1"></script></head>
-<body><a class="skip" href="#main">Skip to content</a><nav aria-label="Main navigation"><a class="brand" href="#">Flow-Map GRPO</a><div><a href="#compare">Compare</a><a href="#method">Method</a><a href="#results">Results</a><a href="#citation">BibTeX</a></div></nav>
-<main id="main"><header><p class="eyebrow">REINFORCEMENT LEARNING · FEW-STEP GENERATION</p><h1>Flow-Map<span> GRPO</span></h1><p class="subtitle">Reinforcement Learning for Few-Step Flow-Map Generators<br> via Anchored Stochastic Composition</p><p class="authors"><a href="https://zhiqili-cg.github.io/">Zhiqi Li</a><span>Wen Zhang</span><a href="https://faculty.cc.gatech.edu/~bozhu/">Bo Zhu</a></p><p class="affiliation">Georgia Institute of Technology</p><div class="links"><a href="https://arxiv.org/abs/2607.00535">Paper ↗</a><a href="https://github.com/ZhiqiLi-CG/FlowMap-GRPO">Code ↗</a><a href="#compare">Explore comparisons ↓</a></div></header>
-<figure class="hero"><img src="assets/teaser.webp" width="2360" height="704" alt="Images from MeanFlow and sCM after Flow-Map GRPO, and Base versus Ours pairs for OCR, PickScore and GenEval."><figcaption>Left: MeanFlow and sCM after joint OCR + PickScore post-training. Right: Base vs. Flow-Map GRPO on OCR, PickScore and GenEval.</figcaption></figure>
-<section class="intro"><div><p class="eyebrow">01 — OVERVIEW</p><h2>Deterministic maps.<br>Stochastic policies.</h2></div><p>Few-step flow-map generators such as MeanFlow and consistency models jump between noise and data in a few deterministic steps. Likelihood-ratio RL needs stochastic transitions with tractable densities, and the SDE construction used for velocity samplers does not extend to long-range jumps. <strong>Anchored Stochastic Flow Map Composition (ASFMC)</strong> transports each jump to an anchor and resamples back from a conditional distribution. This preserves the marginal probability path and yields a Gaussian policy. <strong>Flow-Map GRPO</strong> trains MeanFlow-style two-time maps and sCM-style one-time models with one GRPO procedure, without changing their parameterization.</p></section>
-<section id="compare"><div class="section-heading"><div><p class="eyebrow">02 — INTERACTIVE COMPARISONS</p><h2>Before and after, at every step count.</h2></div><p>Choose a backbone, a reward and an example.<br>Base and Flow-Map GRPO share the prompt and seed.</p></div><div class="explorer"><div class="explorer-top"><div class="segmented backbone" role="group" aria-label="Backbone"><button data-backbone="meanflow" class="active" aria-pressed="true">MeanFlow</button><button data-backbone="scm" aria-pressed="false">sCM</button></div><div class="task-tabs" role="group" aria-label="Reward"><button data-task="ocr" class="active" aria-pressed="true">Text rendering <span>OCR</span></button><button data-task="pickscore" aria-pressed="false">Visual preference <span>PickScore</span></button><button data-task="geneval" aria-pressed="false">Composition <span>GenEval</span></button><button data-task="mixed" aria-pressed="false">Joint reward <span>OCR + PickScore</span></button></div><div class="stepper"><button id="prev" aria-label="Previous example">←</button><span id="counter"></span><button id="next" aria-label="Next example">→</button></div></div>
-<div id="thumbnails" class="thumbnails" role="group" aria-label="Choose an example"></div>
-<div class="prompt-line"><span>PROMPT</span><p id="prompt"></p></div>
-<div class="comparison-toolbar"><div id="steps" class="steps" role="group" aria-label="Number of transitions K"></div><div class="segmented" role="group" aria-label="Comparison view"><button data-mode="pair" class="active" aria-pressed="true">Side by side</button><button data-mode="slider" aria-pressed="false">Slide to compare</button><button data-mode="sweep" aria-pressed="false">All steps</button></div></div>
-<div id="pair" class="gallery" style="--cols:2" aria-live="polite"></div>
-<div id="slider-panel" hidden><div class="image-compare"><img id="right-image" alt=""><div id="left-layer"><img id="left-image" alt=""></div><div id="divider"></div><span id="left-label" class="image-label">Base</span><span id="right-label" class="image-label">Flow-Map GRPO</span><input id="wipe" type="range" min="0" max="100" value="50" aria-label="Image comparison position"></div><p class="slider-hint">Drag to compare the same prompt and initial noise.</p></div>
-<div id="sweep-panel" class="sweep-scroll" hidden><div id="sweep" class="sweep"></div></div></div>
-<p class="fine">Examples from the paper's appendix. Adapters are trained at K = 4. K counts the stochastic transitions before the final endpoint step, so sampling uses K + 1 steps. Click an image to enlarge.</p><noscript><p>Enable JavaScript to browse the examples. The paper figures remain available below.</p></noscript></section>
-<section id="method"><div class="section-heading"><div><p class="eyebrow">03 — METHOD</p><h2>Transport, then resample.</h2></div><p>Keep the pretrained flow map.<br>Add randomness that preserves the path.</p></div>
-<div class="method-block"><div class="method-text"><span class="tag">THE CHALLENGE</span><h3>Long-range jumps are not Gaussian</h3><p>For a small velocity step, an SDE discretization gives a Gaussian transition, which is how Flow-GRPO makes flow matching stochastic. A flow map jumps over a long interval. There, accumulated nonlinear stochastic dynamics generally produce a non-Gaussian transition, and the paper proves that no additive-Gaussian form built from the flow map and its derivatives represents it in general. Resolving the path with many small steps would give up the few-step advantage.</p></div><div class="fig-row" style="--n:2"><figure><img loading="lazy" src="assets/fig_flow_sde.webp" alt="Infinitesimal SDE transition with a Gaussian distribution around the velocity step"><figcaption>(a) Infinitesimal transition</figcaption></figure><figure><img loading="lazy" src="assets/fig_flowmap_sde.webp" alt="Long-range SDE transition whose distribution is not Gaussian around the flow-map output"><figcaption>(b) Long-range transition</figcaption></figure></div></div>
-<div class="fig-row anchors" style="--n:3"><figure><img loading="lazy" src="assets/fig_anchor_principle.webp" alt="ASFMC: transport to an anchor time and sample back to the target time"><figcaption>(a) ASFMC principle</figcaption></figure><figure><img loading="lazy" src="assets/fig_anchor_endpoint.webp" alt="Endpoint anchor: transport to the data endpoint and re-noise"><figcaption>(b) Endpoint anchor</figcaption></figure><figure><img loading="lazy" src="assets/fig_anchor_local.webp" alt="Local anchor: transport a short step forward and sample back"><figcaption>(c) Local anchor</figcaption></figure></div>
-<div class="cards"><article><span>01 / ASFMC</span><h3>Transport, anchor, resample</h3><p>Jump from <i>t</i> to <i>r</i> with the flow map, transport the result to an anchor at time <i>τ</i>, then sample X&#771;<sub><i>r</i></sub> from <i>p</i><sub><i>r</i>|<i>τ</i></sub>. With accurate maps, X&#771;<sub><i>r</i></sub> keeps the marginal <i>p</i><sub><i>r</i></sub>.</p></article><article><span>02 / ENDPOINT ANCHOR · τ = 1</span><h3>Re-noise a clean prediction</h3><p>Predict the clean endpoint X<sub>1</sub> and resample X&#771;<sub><i>r</i></sub> ~ 𝒩(<i>a<sub>r</sub></i>X<sub>1</sub>, <i>b<sub>r</sub></i><sup>2</sup><i>I</i>). One-time models such as sCM predict X<sub>1</sub> directly.</p></article><article><span>03 / LOCAL ANCHOR · τ = r + h</span><h3>Drift correction plus noise</h3><p>A short anchor gives X&#771;<sub><i>r</i></sub> = X<sub><i>r</i></sub> + <i>hλ</i><sup>2</sup>[<i>u<sub>r</sub></i>(X<sub><i>r</i></sub>) − (<i>ȧ<sub>r</sub></i>/<i>a<sub>r</sub></i>)X<sub><i>r</i></sub>] + <i>σ<sub>r</sub></i>√<i>h</i> ξ, accurate to O(<i>h</i><sup>3/2</sup>). Two-time maps such as MeanFlow use it.</p></article></div>
-<p class="method-note">Both anchors define Gaussian policies with explicit means and variances, so one clipped GRPO objective trains either model through LoRA adapters. The reward needs no gradients: per-image rewards (OCR, PickScore, GenEval) and image-set rewards (MMD) both apply.</p></section>
-<section id="results"><div class="section-heading"><div><p class="eyebrow">04 — RESULTS</p><h2>Large reward gains at five steps.</h2></div><p>Trained and evaluated at K = 4 (five sampling steps).<br>Gains hold at every tested step count.</p></div>
-<div class="rpanel"><div class="rhead"><h3>Text-to-image post-training</h3><span>FLUX-based MeanFlow and sCM · higher is better</span></div><div class="table-scroll"><table class="rtable"><thead><tr><th rowspan="2">Reward</th><th rowspan="2">Metric</th><th colspan="2" class="group">MeanFlow</th><th colspan="2" class="group">sCM</th></tr><tr><th>Base</th><th class="ours-col">Ours</th><th>Base</th><th class="ours-col">Ours</th></tr></thead><tbody><tr><th>OCR</th><td class="metric">OCR accuracy</td><td>0.3491</td><td class="ours-col">0.8504</td><td>0.4903</td><td class="ours-col">0.8863</td></tr><tr><th>PickScore</th><td class="metric">PickScore</td><td>20.9758</td><td class="ours-col">23.0772</td><td>20.3517</td><td class="ours-col">23.4820</td></tr><tr><th>GenEval</th><td class="metric">GenEval</td><td>0.5041</td><td class="ours-col">0.8454</td><td>0.4513</td><td class="ours-col">0.8049</td></tr><tr class="joint"><th rowspan="2">OCR + PickScore<small>one adapter</small></th><td class="metric">OCR accuracy</td><td>0.3491</td><td class="ours-col">0.7719</td><td>0.4903</td><td class="ours-col">0.8568</td></tr><tr><td class="metric">PickScore</td><td>20.9758</td><td class="ours-col">22.4964</td><td>20.3517</td><td class="ours-col">22.5153</td></tr></tbody></table></div><p class="rnote">One LoRA adapter per reward and backbone; the joint adapter is trained on a mixture of OCR and PickScore prompts.</p></div>
-<figure class="wide"><img loading="lazy" src="assets/mixed_sweep.webp" width="2048" height="1024" alt="MeanFlow before and after joint OCR and PickScore post-training at several step counts; the treasure map lettering becomes legible"><figcaption>MeanFlow before (top) and after (bottom) joint OCR + PickScore post-training. Prompt: “A weathered treasure map laid out on an old wooden table, with ‘X Marks the Spot’ clearly visible in the center …”</figcaption></figure>
-<div class="rgrid"><div class="rpanel"><div class="rhead"><h3>Matched baselines</h3><span>K = 4 · same models, prompts, rewards and optimizer steps</span></div><div class="table-scroll"><table class="rtable"><thead><tr><th rowspan="2">Method</th><th colspan="2" class="group">sCM</th><th colspan="2" class="group">MeanFlow</th></tr><tr><th>OCR</th><th>PickScore</th><th>OCR</th><th>PickScore</th></tr></thead><tbody><tr><th>Base</th><td>0.4903</td><td>20.3517</td><td>0.3491</td><td>20.9758</td></tr><tr><th>SFT</th><td>0.4588</td><td>20.7893</td><td>0.3360</td><td>20.9763</td></tr><tr><th>DiffusionNFT</th><td>0.5363</td><td>20.2200</td><td>0.3576</td><td>20.5418</td></tr><tr class="ours"><th>Flow-Map GRPO</th><td>0.8863</td><td>23.4820</td><td>0.8503</td><td>23.0772</td></tr></tbody></table></div></div>
-<div class="rpanel"><div class="rhead"><h3>ImageNet ablation</h3><span>MMD image-set reward · five steps · epoch 400</span></div><div class="table-scroll"><table class="rtable"><thead><tr><th>Policy</th><th>FID ↓</th><th>Prec. ↑</th><th>Rec. ↑</th></tr></thead><tbody><tr class="sub"><th colspan="4">MeanFlow · local anchor</th></tr><tr><th>Base</th><td>25.43</td><td>0.591</td><td>0.340</td></tr><tr class="ours"><th>Ours</th><td>16.72</td><td>0.774</td><td>0.421</td></tr><tr><th>Drift + const. noise</th><td>32.71</td><td>0.609</td><td>0.214</td></tr><tr><th>No drift</th><td>70.13</td><td>0.269</td><td>0.195</td></tr><tr><th>No drift + const. noise</th><td>49.25</td><td>0.384</td><td>0.102</td></tr><tr class="sub"><th colspan="4">CM · endpoint anchor</th></tr><tr><th>Base</th><td>25.69</td><td>0.567</td><td>0.381</td></tr><tr class="ours"><th>Ours</th><td>15.65</td><td>0.784</td><td>0.438</td></tr><tr><th>Constant noise</th><td>42.16</td><td>0.460</td><td>0.107</td></tr></tbody></table></div><p class="rnote">Removing the drift correction or replacing the scheduled noise with variance-matched constant noise degrades generation; the anchored policy improves all three metrics.</p></div></div></section>
-<section id="citation"><div class="section-heading"><div><p class="eyebrow">05 — CITATION</p><h2>BibTeX</h2></div></div><div class="bibtex"><button id="copy-bib" type="button">Copy</button><pre><code id="bib">@article{li2026flowmapgrpo,
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow-Map GRPO</title>
+<meta name="description" content="Flow-Map GRPO: online reinforcement learning for deterministic few-step flow-map generators such as MeanFlow and sCM, via Anchored Stochastic Flow Map Composition.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Flow-Map GRPO: Reinforcement Learning for Few-Step Flow-Map Generators via Anchored Stochastic Composition">
+<meta property="og:description" content="Online RL post-training for deterministic few-step flow-map generators (MeanFlow, sCM).">
+<meta property="og:url" content="https://zhiqili-cg.github.io/FlowMap-GRPO-Project/">
+<meta property="og:image" content="https://zhiqili-cg.github.io/FlowMap-GRPO-Project/assets/teaser.webp">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,400i,700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1.9.4/css/academicons.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="styles.css?v=2">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="renderMathInElement(document.body,{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}]})"></script>
+<script defer src="samples.js?v=2"></script>
+<script defer src="app.js?v=2"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<main id="main">
+
+<header class="hero">
+ <div class="container">
+  <h1 class="publication-title">Flow-Map GRPO: Reinforcement Learning for Few-Step Flow-Map Generators via Anchored Stochastic Composition</h1>
+  <p class="authors">
+   <span class="author"><a href="https://zhiqili-cg.github.io/">Zhiqi Li</a></span>
+   <span class="author">Wen Zhang</span>
+   <span class="author"><a href="https://faculty.cc.gatech.edu/~bozhu/">Bo Zhu</a></span>
+  </p>
+  <p class="affiliation">Georgia Institute of Technology</p>
+  <div class="links">
+   <a class="button" href="https://arxiv.org/pdf/2607.00535"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.8L18.2 9H13V3.8zM8 12.5h8V14H8v-1.5zm0 3h8V17H8v-1.5zm0-6h3V11H8V9.5z"/></svg>Paper</a>
+   <a class="button" href="https://arxiv.org/abs/2607.00535"><i class="ai ai-arxiv" aria-hidden="true"></i>arXiv</a>
+   <a class="button" href="https://github.com/ZhiqiLi-CG/FlowMap-GRPO"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Code</a>
+  </div>
+ </div>
+</header>
+
+<div class="teaser">
+ <div class="container">
+  <figure>
+   <img src="assets/teaser.webp" width="2360" height="704" alt="Images from MeanFlow and sCM after Flow-Map GRPO, and base versus Flow-Map GRPO pairs for OCR, PickScore and GenEval.">
+   <p class="tldr"><strong>Flow-Map GRPO</strong> brings online reinforcement learning to deterministic few-step flow-map generators, such as MeanFlow and sCM, without changing their parameterization.</p>
+   <figcaption>Left: MeanFlow and sCM samples after joint OCR + PickScore post-training. Right: base model vs. Flow-Map GRPO on OCR, PickScore and GenEval.</figcaption>
+  </figure>
+ </div>
+</div>
+
+<section id="abstract">
+ <div class="container">
+  <h2>Abstract</h2>
+  <div class="narrow justify">
+   <p>Few-step flow-map generators, such as consistency models and MeanFlow, accelerate sampling by learning long-range transport maps between noise and data. However, their deterministic transitions do not directly provide the stochastic trajectories and tractable likelihood ratios required by reinforcement learning (RL) post-training. Existing SDE-based stochasticization techniques target velocity-based samplers and do not directly extend to long-range flow-map transitions. We propose <strong>Flow-Map GRPO</strong>, an online RL post-training framework for deterministic few-step flow-map generators. Its key component, <strong>Anchored Stochastic Flow Map Composition (ASFMC)</strong>, combines deterministic transport with anchor-based conditional resampling. We establish the conditions under which this construction preserves the marginal probability path and develop tractable local- and endpoint-anchor policies for two-time and single-time flow maps. These policies enable a unified GRPO training procedure. Experiments on FLUX-based MeanFlow and sCM generators demonstrate substantial improvements in OCR, PickScore, and GenEval at different numbers of inference steps, including joint OCR–PickScore gains with mixed rewards. Controlled ablations show that the stochastic transition design is essential for translating training rewards into generation quality. Flow-Map GRPO enables effective RL alignment of pretrained deterministic flow-map generators while retaining their original parameterization, without retraining them as native stochastic models.</p>
+  </div>
+ </div>
+</section>
+
+<section class="band" id="comparison">
+ <div class="container">
+  <h2>Qualitative Comparison</h2>
+  <p class="viewer-intro">The base model and Flow-Map GRPO, with the same prompt and initial noise. Choose a backbone, a reward and the number of steps.</p>
+  <div class="controls">
+   <div class="seg" role="group" aria-label="Backbone"><button type="button" data-backbone="meanflow" class="active" aria-pressed="true">MeanFlow</button><button type="button" data-backbone="scm" aria-pressed="false">sCM</button></div>
+   <div class="seg grid-sm" role="group" aria-label="Reward"><button type="button" data-task="ocr" class="active" aria-pressed="true">OCR</button><button type="button" data-task="pickscore" aria-pressed="false">PickScore</button><button type="button" data-task="geneval" aria-pressed="false">GenEval</button><button type="button" data-task="mixed" aria-pressed="false">OCR + PickScore</button></div>
+  </div>
+  <div id="stage" class="stage pair" aria-live="polite"></div>
+  <div class="steps"><span class="seg-label">Stochastic transitions K</span><div id="steps" class="seg" role="group" aria-label="Number of stochastic transitions K"></div></div>
+  <p id="prompt" class="prompt"></p>
+  <div class="strip"><button type="button" class="arrow" id="prev" aria-label="Previous example">&#8249;</button><div id="thumbs" class="thumbs" role="group" aria-label="Examples"></div><button type="button" class="arrow" id="next" aria-label="Next example">&#8250;</button></div>
+  <p id="counter" class="counter"></p>
+  <p class="note">Examples from the paper's appendix. Adapters are trained at K = 4. K counts the stochastic transitions before the final endpoint step, so sampling uses K + 1 steps. Click an image to enlarge.</p>
+  <noscript><p class="note">Enable JavaScript to browse the examples.</p></noscript>
+ </div>
+</section>
+
+<section id="method">
+ <div class="container">
+  <h2>Method</h2>
+  <div class="narrow">
+   <h3>Why flow maps need a new stochastic policy</h3>
+   <p class="justify">Likelihood-ratio RL such as GRPO needs stochastic transitions with tractable densities. For a small velocity step, an SDE discretization gives a Gaussian transition, which is how Flow-GRPO makes flow matching stochastic. A flow map instead jumps over a long interval, where the accumulated nonlinear stochastic dynamics generally produce a non-Gaussian transition. The paper shows that no additive-Gaussian form built from the flow map and its derivatives represents this transition in general, and resolving the path with many small steps would give up the few-step advantage.</p>
+  </div>
+  <div class="fig-row stack-sm" style="--n:2">
+   <figure><img loading="lazy" src="assets/fig_flow_sde.webp" alt="Infinitesimal SDE transition with a Gaussian distribution around the velocity step"><figcaption>(a) Infinitesimal transition</figcaption></figure>
+   <figure><img loading="lazy" src="assets/fig_flowmap_sde.webp" alt="Long-range SDE transition whose distribution is not Gaussian around the flow-map output"><figcaption>(b) Long-range transition</figcaption></figure>
+  </div>
+  <div class="narrow">
+   <h3>Anchored Stochastic Flow Map Composition</h3>
+   <p class="justify">ASFMC keeps the pretrained deterministic map and adds randomness by resampling. It first transports the state, \(X_r=\psi^\theta_{t\to r}(X_t)\), then moves on to an anchor time \(\tau\) and samples back to time \(r\) from the conditional distribution \(p_{r\mid\tau}\). When the maps are accurate, the resampled state \(\widetilde X_r\) keeps the marginal \(p_r\), so the probability path of the generator is preserved. The choice of anchor gives two tractable Gaussian policies:</p>
+   <dl class="defs">
+    <dt>Endpoint anchor, \(\tau=1\)</dt>
+    <dd>Transport to the data endpoint, \(X_1=\psi^\theta_{r\to1}(X_r)\), and re-noise with the affine path. One-time models such as sCM predict \(X_1\) directly.
+     <div class="eq">\[\widetilde X_r\sim\mathcal N\!\left(a_rX_1,\;b_r^2I\right)\]</div></dd>
+    <dt>Local anchor, \(\tau=r+h\)</dt>
+    <dd>A short anchor gives a drift correction plus scheduled noise, accurate to \(O(h^{3/2})\). Two-time maps such as MeanFlow use it.
+     <div class="eq">\[\widetilde X_r=X_r+h\lambda^2\!\left[u_r(X_r)-\tfrac{\dot a_r}{a_r}X_r\right]+\sigma_r\sqrt h\,\xi,\qquad \xi\sim\mathcal N(0,I)\]</div></dd>
+   </dl>
+  </div>
+  <div class="fig-row stack-sm" style="--n:3">
+   <figure><img loading="lazy" src="assets/fig_anchor_principle.webp" alt="ASFMC: transport to an anchor time and sample back to the target time"><figcaption>(a) ASFMC principle</figcaption></figure>
+   <figure><img loading="lazy" src="assets/fig_anchor_endpoint.webp" alt="Endpoint anchor: transport to the data endpoint and re-noise"><figcaption>(b) Endpoint anchor</figcaption></figure>
+   <figure><img loading="lazy" src="assets/fig_anchor_local.webp" alt="Local anchor: transport a short step forward and sample back"><figcaption>(c) Local anchor</figcaption></figure>
+  </div>
+  <div class="narrow">
+   <h3>Flow-Map GRPO</h3>
+   <p class="justify">Both anchors define Gaussian policies with explicit means and variances, so a single clipped GRPO objective trains either kind of model through LoRA adapters. Sampling uses \(K\) stochastic transitions followed by one deterministic endpoint step, which is excluded from the likelihood ratio. Rewards need no gradients: per-image rewards (OCR, PickScore, GenEval) and image-set rewards (MMD) both apply.</p>
+  </div>
+ </div>
+</section>
+
+<section id="results">
+ <div class="container">
+  <h2>Results</h2>
+  <div class="narrow"><p class="justify">We post-train FLUX-based MeanFlow and sCM generators with one LoRA adapter per reward. Training and evaluation use \(K=4\) stochastic transitions, that is, five sampling steps.</p></div>
+  <div class="table-wrap">
+   <p class="tcap">Table 1. Text-to-image post-training (higher is better). The joint adapter is trained on a mixture of OCR and PickScore prompts.</p>
+    <table>
+    <thead>
+     <tr><th rowspan="2">Reward</th><th rowspan="2">Metric</th><th colspan="2" class="group">MeanFlow</th><th colspan="2" class="group">sCM</th></tr>
+     <tr><th>Base</th><th>Ours</th><th>Base</th><th>Ours</th></tr>
+    </thead>
+    <tbody>
+     <tr><th>OCR</th><td class="dim">OCR acc.</td><td>0.3491</td><td><b>0.8504</b></td><td>0.4903</td><td><b>0.8863</b></td></tr>
+     <tr><th>PickScore</th><td class="dim">PickScore</td><td>20.9758</td><td><b>23.0772</b></td><td>20.3517</td><td><b>23.4820</b></td></tr>
+     <tr><th>GenEval</th><td class="dim">GenEval</td><td>0.5041</td><td><b>0.8454</b></td><td>0.4513</td><td><b>0.8049</b></td></tr>
+     <tr class="rule"><th rowspan="2">OCR + PickScore</th><td class="dim">OCR acc.</td><td>0.3491</td><td><b>0.7719</b></td><td>0.4903</td><td><b>0.8568</b></td></tr>
+     <tr><td class="dim">PickScore</td><td>20.9758</td><td><b>22.4964</b></td><td>20.3517</td><td><b>22.5153</b></td></tr>
+    </tbody>
+   </table>
+  </div>
+  <figure>
+   <button type="button" class="zoom" data-caption="MeanFlow before (top) and after (bottom) joint OCR + PickScore post-training at K = 3, 4, 7, 15."><img loading="lazy" src="assets/mixed_sweep.webp" width="2048" height="1024" alt="MeanFlow before and after joint OCR and PickScore post-training at several step counts; the treasure map lettering becomes legible"></button>
+   <figcaption>MeanFlow before (top) and after (bottom) joint OCR + PickScore post-training, at K = 3, 4, 7 and 15. Prompt: “A weathered treasure map laid out on an old wooden table, with ‘X Marks the Spot’ clearly visible in the center …”</figcaption>
+  </figure>
+  <div class="narrow">
+   <h3>Comparison with baselines</h3>
+   <p class="justify">With the same models, prompts, rewards and optimizer steps, supervised fine-tuning and DiffusionNFT change the rewards little, while Flow-Map GRPO raises OCR accuracy above 0.85 and PickScore above 23 on both backbones.</p>
+  </div>
+  <div class="table-wrap">
+   <p class="tcap">Table 2. Matched baselines at K = 4.</p>
+    <table>
+    <thead>
+     <tr><th rowspan="2">Method</th><th colspan="2" class="group">sCM</th><th colspan="2" class="group">MeanFlow</th></tr>
+     <tr><th>OCR</th><th>PickScore</th><th>OCR</th><th>PickScore</th></tr>
+    </thead>
+    <tbody>
+     <tr><th>Base</th><td>0.4903</td><td>20.3517</td><td>0.3491</td><td>20.9758</td></tr>
+     <tr><th>SFT</th><td>0.4588</td><td>20.7893</td><td>0.3360</td><td>20.9763</td></tr>
+     <tr><th>DiffusionNFT</th><td>0.5363</td><td>20.2200</td><td>0.3576</td><td>20.5418</td></tr>
+     <tr class="ours"><th>Flow-Map GRPO</th><td>0.8863</td><td>23.4820</td><td>0.8503</td><td>23.0772</td></tr>
+    </tbody>
+   </table>
+  </div>
+  <div class="narrow">
+   <h3>Ablation of the stochastic transition</h3>
+   <p class="justify">On ImageNet with an image-set MMD reward, removing the drift correction or replacing the scheduled noise with variance-matched constant noise degrades generation. Only the anchored policies improve FID, precision and recall together, so simply adding noise to the deterministic flow-map output is not enough.</p>
+  </div>
+  <div class="table-wrap">
+   <p class="tcap">Table 3. ImageNet ablation with the MMD reward (five steps, epoch 400).</p>
+    <table>
+    <thead><tr><th>Policy</th><th>FID ↓</th><th>Precision ↑</th><th>Recall ↑</th></tr></thead>
+    <tbody>
+     <tr class="sub"><th colspan="4">MeanFlow, local anchor</th></tr>
+     <tr><th>Base</th><td>25.43</td><td>0.591</td><td>0.340</td></tr>
+     <tr class="ours"><th>Ours</th><td>16.72</td><td>0.774</td><td>0.421</td></tr>
+     <tr><th>Drift + constant noise</th><td>32.71</td><td>0.609</td><td>0.214</td></tr>
+     <tr><th>No drift</th><td>70.13</td><td>0.269</td><td>0.195</td></tr>
+     <tr><th>No drift + constant noise</th><td>49.25</td><td>0.384</td><td>0.102</td></tr>
+     <tr class="sub rule"><th colspan="4">Consistency model, endpoint anchor</th></tr>
+     <tr><th>Base</th><td>25.69</td><td>0.567</td><td>0.381</td></tr>
+     <tr class="ours"><th>Ours</th><td>15.65</td><td>0.784</td><td>0.438</td></tr>
+     <tr><th>Constant noise</th><td>42.16</td><td>0.460</td><td>0.107</td></tr>
+    </tbody>
+   </table>
+  </div>
+ </div>
+</section>
+
+<section id="related">
+ <div class="container narrow">
+  <h2>Related Project</h2>
+  <ul class="related">
+   <li><a href="https://zhiqili-cg.github.io/Flowmap_OPD_project/"><strong>FlowMap-OPD</strong></a>: on-policy distillation for few-step flow-map generators, which consolidates several Flow-Map GRPO specialist teachers into one few-step student.</li>
+  </ul>
+ </div>
+</section>
+
+<section id="bibtex">
+ <div class="container">
+  <h2>BibTeX</h2>
+  <div class="bib"><button id="copy-bib" type="button">Copy</button><pre><code id="bib">@article{li2026flowmapgrpo,
   title   = {Flow-Map GRPO: Reinforcement Learning for Few-Step Flow-Map Generators via Anchored Stochastic Composition},
   author  = {Li, Zhiqi and Zhang, Wen and Zhu, Bo},
   journal = {arXiv preprint arXiv:2607.00535},
   year    = {2026}
-}</code></pre></div></section>
-</main><dialog id="lightbox"><button id="close-lightbox" aria-label="Close image">×</button><img id="lightbox-image" alt=""><p id="lightbox-caption"></p></dialog><footer><span>Flow-Map GRPO · Zhiqi Li, Wen Zhang &amp; Bo Zhu</span><a href="mailto:zli3167@gatech.edu">Contact</a><a href="#">Back to top ↑</a></footer></body></html>
+}</code></pre></div>
+ </div>
+</section>
+
+</main>
+<dialog id="lightbox"><button id="close-lightbox" type="button" aria-label="Close image">&times;</button><img id="lightbox-image" alt=""><p id="lightbox-caption"></p></dialog>
+<footer><div class="container"><p>Flow-Map GRPO · Georgia Institute of Technology · <a href="mailto:zli3167@gatech.edu">zli3167@gatech.edu</a></p></div></footer>
+</body>
+</html>
